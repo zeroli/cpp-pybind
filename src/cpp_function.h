@@ -14,6 +14,13 @@ public:
         // TODO
     }
 
+    // delegating helper ctor to deal with lambda function
+    template <typename Func, typename... Extra>
+    cpp_function(Func&& func, Extra&&... extra)
+    {
+        // TODO
+    }
+
     // non-const method
     template <typename R, typename C, typename... Args, typename... Extra>
     cpp_function(R (C::*f)(Args...), Extra&&... extra)

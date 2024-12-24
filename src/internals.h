@@ -76,12 +76,12 @@ inline internals& get_internals()
     }
 
     handle builtins(PyEval_GetBuiltins());
-    capsule_t caps(builtins["__cpp-pybind__"]);
+    capsule_t caps(builtins[CPP_PYBIND]);
     if (caps.ok()) {
         internals_ptr = caps;
     } else {
         internals_ptr = new internals();
-        builtins["__cpp-pybind__"] = capsule_t(internals_ptr);
+        builtins[CPP_PYBIND] = capsule_t(internals_ptr);
     }
     return *internals_ptr;
 }

@@ -15,6 +15,9 @@ public:
     explicit custom_type(object& scope, const char* name,
                         const std::type_info* tinfo,
                         size_t type_size,
+                        size_t instance_size,
+                        void (*init_holder)(PyObject *),
+                        const destructor& dealloc,
                         PyObject* parent = nullptr)
     {
         PyHeapTypeObject* type = (PyHeapTypeObject*)PyType_Type.tp_alloc(&PyType_Type, 0);
@@ -34,10 +37,10 @@ public:
 
         type->ht_name = name_obj;
         type->ht_type.tp_name = strdup(full_name.c_str());
-        type->ht_type.tp_basicsize = 0; // instance_size;
-        type->ht_type.tp_init = (initproc)nullptr; //init;
-        type->ht_type.tp_new = (newfunc)nullptr; //new_instance;
-        type->ht_type.tp_dealloc = nullptr; //dealloc;
+        type->ht_type.tp_basicsize = instance_size;
+        type->ht_type.tp_init = (initproc)init;
+        type->ht_type.tp_new = (newfunc)new_instance;
+        type->ht_type.tp_dealloc = dealloc;
         type->ht_type.tp_flags |=
             Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
         type->ht_type.tp_flags &= ~Py_TPFLAGS_HAVE_GC;
@@ -55,11 +58,48 @@ public:
         auto &type_info = detail::get_internals().registered_types_[tinfo];
         type_info.type = (PyTypeObject *) ptr_;
         type_info.type_size = type_size;
-        type_info.init_holder = nullptr; //init_holder;
+        type_info.init_holder = init_holder;
 
-        attr("__cpp-pybind__") = capsule_t(&type_info);
+        attr(CPP_PYBIND) = capsule_t(&type_info);
         scope.attr(name_obj) = *this;
     }
-private:
+protected:
+    static int init(void* self, PyObject*, PyObject*)
+    {
+        std::string msg = std::string(Py_TYPE(self)->tp_name) + ": No constructor defined!";
+        PyErr_SetString(PyExc_TypeError, msg.c_str());
+        return -1;
+    }
+
+    static PyObject* new_instance(PyTypeObject* type, PyObject*, PyObject*)
+    {
+        const detail::type_info* type_info = capsule_t(
+            PyObject_GetAttrString((PyObject*)type, const_cast<char*>(CPP_PYBIND)),
+            false
+        );
+        detail::instance<void>* self = (detail::instance<void>*)PyType_GenericAlloc(type, 0);
+        self->value = ::operator new(type_info->type_size);
+        self->owned = true;
+        self->parent = nullptr;
+        self->constructed = false;
+        detail::get_internals().registered_instances_[self->value] = (PyObject*)self;
+        return (PyObject*)self;
+    }
+
+    static void dealloc(detail::instance<void>* self)
+    {
+        if (self->value) {
+            bool dont_cache = self->parent
+                && ((detail::instance<void> *) self->parent)->value == self->value;
+            if (!dont_cache) {
+                auto& registered_instances = detail::get_internals().registered_instances_;
+                auto it = registered_instances.find(self->value);
+                CHECK(it != registered_instances.end());
+                registered_instances.erase(it);
+            }
+            Py_XDECREF(self->parent);
+        }
+        Py_TYPE(self)->tp_free((PyObject*)self);
+    }
 };
 }  // namespace cpy
