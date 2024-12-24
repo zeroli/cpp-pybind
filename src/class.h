@@ -23,9 +23,9 @@ public:
     class_& def(const char* name, Func&& func, Extra&&... extra)
     {
         cpp_function cf(std::forward<Func>(func),
-                        name,
-                        true,  /// is_method
-                        std::forward<Extra>(extra)...);
+                                name,
+                                true,  /// is_method
+                                std::forward<Extra>(extra)...);
         attr(cf.name()) = cf;
         return *this;
     }
@@ -35,9 +35,9 @@ public:
     class_& def_static(const char* name, Func&& func, Extra&&... extra)
     {
         cpp_function cf(std::forward<Func>(func),
-                        name,
-                        false, /// is not method
-                        std::forward<Extra>(extra)...);
+                                name,
+                                false, /// is not method
+                                std::forward<Extra>(extra)...);
         attr(cf.name()) = cf;
         return *this;
     }

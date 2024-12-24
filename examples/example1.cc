@@ -26,7 +26,8 @@ private:
 static void registerA(cpy::module& m)
 {
     cpy::class_<A>(m, "A")
-        .def("foo1", &A::foo1);
+        .def("foo1", &A::foo1)
+        .def_static("soo", &A::soo);
 }
 
 int main(int argc, char** argv)

@@ -11,10 +11,9 @@ class module : public object
 public:
     using object::object;
 
-    explicit module(const char* name) {
-        ptr_ = Py_InitModule(name, nullptr);
-
-        inc_ref();
+    explicit module(const char* name)
+        : object(Py_InitModule(name, nullptr))
+    {
     }
     ~module() = default;
 
@@ -22,9 +21,9 @@ public:
     module& def(const char* name, Func&& func, Extra&&... extra)
     {
         cpp_function cppfunc(
-            std::forward<Func>(func),
-            name,
-            std::forward<Extra>(extra)...);
+                                std::forward<Func>(func),
+                                name,
+                                std::forward<Extra>(extra)...);
         cppfunc.inc_ref();
         PyModule_AddObject(ptr(), name, func.ptr());
         return *this;

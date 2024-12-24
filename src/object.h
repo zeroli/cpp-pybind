@@ -4,6 +4,8 @@
 
 namespace cpy {
 
+class str_t;
+
 namespace detail {
 class accessor;
 }  // namespace detail
@@ -42,7 +44,7 @@ public:
     inline detail::accessor attr(handle key);
     inline detail::accessor attr(const char* key);
 
-    //inline str_t str() const;
+    inline str_t str() const;
 
     // template <typename T>
     // T cast();
@@ -53,7 +55,9 @@ public:
     operator bool() const {
         return ptr_ != nullptr;
     }
-
+    bool ok() const {
+        return ptr_ != nullptr;
+    }
 protected:
     PyObject* ptr_ {nullptr};
 };
@@ -68,14 +72,14 @@ public:
     {
         inc_ref();
     }
-    object(const handle& rhs, bool borrowed = false)
+    object(const handle& rhs, bool borrowed = true)
         : handle(rhs)
     {
         if (borrowed) {
             inc_ref();
         }
     }
-    object(PyObject* ptr, bool borrowed = false)
+    object(PyObject* ptr, bool borrowed = true)
         : handle(ptr)
     {
         if (borrowed) {
@@ -145,7 +149,8 @@ public:
     operator object() const {
         object result(is_attr_
                 ? PyObject_GetAttr(obj_, key_)
-                : PyObject_GetItem(obj_, key_));
+                : PyObject_GetItem(obj_, key_),
+                false);
         if (!result) PyErr_Clear();
         return result;
     }
@@ -168,12 +173,12 @@ private:
 
 inline detail::accessor handle::operator[](handle key)
 {
-    return detail::accessor(ptr(), key.ptr(), true);
+    return detail::accessor(ptr(), key.ptr(), false);
 }
 
 inline detail::accessor handle::operator[](const char* key)
 {
-    return detail::accessor(ptr(), key, true);
+    return detail::accessor(ptr(), key, false);
 }
 
 inline detail::accessor handle::attr(handle key)
@@ -186,4 +191,25 @@ inline detail::accessor handle::attr(const char* key)
     return detail::accessor(ptr(), key, true);
 }
 
+}  // namespace cpy
+
+#include "bool_object.h"
+#include "capsule_object.h"
+#include "dict_object.h"
+#include "float_object.h"
+#include "int_object.h"
+#include "list_object.h"
+#include "slice_object.h"
+#include "str_object.h"
+#include "tuple_object.h"
+
+namespace cpy {
+inline str_t handle::str() const
+{
+    PyObject* str = PyObject_Str(ptr_);
+    PyObject* unicode = PyUnicode_FromEncodedObject(str, "utf-8", nullptr);
+    Py_XDECREF(str);
+    str = unicode;
+    return str_t(str, false);
+}
 }  // namespace cpy
